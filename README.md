@@ -1,13 +1,9 @@
-# Knowledge Graph Generator
+# Knowledge Graph Generator - Streamlit + Braintrust Evals
 
-Enter some text and the language model will try to describe it as a knowledge graph.
+- Credit to original repo I forked from: https://github.com/alonsosilvaallende/knowledge-graph-generator
 
-Pure Python app:
-* [Instructor](https://python.useinstructor.com/) library
-* UI done with [Solara](https://solara.dev)
-* [OpenAI](https://openai.com/) language model
-* Deployed in [Ploomber](https://ploomber.io/)
-* [Deployed app](https://knowledgegraph.ploomberapp.io/)
-
-https://github.com/alonsosilvaallende/knowledge-graph-generator/assets/30263736/59f8011e-ad7c-42f8-9e21-09a512e31191
+## Usage
+- `streamlit run app.py`
+- backend uses braintrustdata.com for logging and evals
+- openai set for LLM; will update for local sources (or use openai api server)
 
