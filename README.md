@@ -2,6 +2,8 @@
 
 - full credit to original repo I forked from: https://github.com/alonsosilvaallende/knowledge-graph-generator
 
+![image](https://github.com/fblissjr/llm-kg-generator/assets/11861687/7df14bfd-e07e-4692-b127-4faf41670560)
+
 ## Usage
 - install graphviz (brew install graphviz for macos, sudo apt-get install graphviz for linux)
 - `streamlit run app.py`
