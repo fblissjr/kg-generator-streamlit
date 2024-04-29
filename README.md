@@ -1,6 +1,6 @@
 # Knowledge Graph & Relationships LLM-driven Generator - Streamlit + Braintrust Evals
 
-- Credit to original repo I forked from: https://github.com/alonsosilvaallende/knowledge-graph-generator
+- full credit to original repo I forked from: https://github.com/alonsosilvaallende/knowledge-graph-generator
 
 ## Usage
 - install graphviz (brew install graphviz for macos, sudo apt-get install graphviz for linux)
