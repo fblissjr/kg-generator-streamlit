@@ -1,6 +1,8 @@
 # Knowledge Graph & Relationships LLM-driven Generator - Streamlit + Braintrust Evals
 
 - full credit to original repo I forked from: https://github.com/alonsosilvaallende/knowledge-graph-generator
+- converted to streamlit
+- plans to use braintrustdata.com as evals (or replace with your own)
 
 ![image](https://github.com/fblissjr/llm-kg-generator/assets/11861687/7df14bfd-e07e-4692-b127-4faf41670560)
 
