@@ -6,3 +6,4 @@ braintrust==0.0.124
 braintrust_core==0.0.34
 pydantic==2.7.0
 typing_extensions==4.11.0
+streamlit-agraph==0.0.45

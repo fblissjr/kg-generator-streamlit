@@ -1,4 +1,5 @@
 import streamlit as st
+from streamlit_agraph import agraph, Node, Edge, Config
 from typing import Any, Callable, Optional, TypeVar, Union, cast, overload, List
 from typing_extensions import TypedDict
 import os
@@ -6,22 +7,70 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 from graphviz import Digraph
 import instructor
-
-from braintrust import init_logger, traced
 import ast
+from PIL import Image
+import io
+from knowledge_graph import KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge
 
 # Braintrust
 # braintrust.login(api_key=os.environ.get("BRAINTRUST_API_KEY"))
 
-
 # Initialize braintrust logger
 # logger = init_logger(project="KG")
-
 
 # native braintrust proxy, todo later
 # client = wrap_openai(
 #    OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "Your OPENAI_API_KEY here"))
 # )
+
+# color_scheme_config = apply_color_scheme("dark")
+
+# Define color schemes
+COLOR_SCHEMES = {
+    "dark": {
+        "bg_color": "#1f1f1f",
+        "node_color": "#f0f0f0",
+        "edge_color": "#8c8c8c",
+        "text_color": "#f0f0f0",
+    },
+    "light": {
+        "bg_color": "#f0f0f0",
+        "node_color": "#1f1f1f",
+        "edge_color": "#4c4c4c",
+        "text_color": "#1f1f1f",
+    },
+}
+
+
+# Function to apply the selected color scheme
+def apply_color_scheme(color_scheme):
+
+    # Apply the selected color scheme to the Streamlit theme
+    st.markdown(
+        f"""
+        <style>
+        .stApp {{
+            background-color: {COLOR_SCHEMES[color_scheme]['bg_color']};
+            color: {COLOR_SCHEMES[color_scheme]['text_color']};
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Configure the Config instance with the selected color scheme
+    config = Config(
+        width=1024,
+        height=800,
+        directed=True,
+        physics=True,
+        hierarchical=True,
+        node_color=COLOR_SCHEMES[color_scheme]["node_color"],
+        edge_color=COLOR_SCHEMES[color_scheme]["edge_color"],
+    )
+
+    return config
+
 
 client = OpenAI(
     # base_url="https://braintrustproxy.com/v1", # only if using braintrust or other logging
@@ -34,24 +83,6 @@ client = OpenAI(
 client = instructor.from_openai(client, mode=instructor.Mode.TOOLS)
 
 
-class Node(BaseModel):
-    id: int
-    label: str
-    color: str
-
-
-class Edge(BaseModel):
-    source: int
-    target: int
-    label: str
-    color: str = "black"
-
-
-class KnowledgeGraph(BaseModel):
-    nodes: List[Node] = Field(description="Nodes in the knowledge graph")
-    edges: List[Edge] = Field(description="Edges in the knowledge graph")
-
-
 class MessageDict(TypedDict):
     role: str
     content: str
@@ -61,37 +92,48 @@ def add_chunk_to_ai_message(chunk: str):
     st.session_state.messages.append({"role": "assistant", "content": chunk})
 
 
-def display_knowledge_graph():
-    if len(st.session_state.messages) > 0:
-        if st.session_state.messages[-1]["role"] != "user":
-            obj = st.session_state.messages[-1]["content"]
-            if f"{obj}" != "":
-                obj = ast.literal_eval(f"{obj}")
-                dot = Digraph(comment="Knowledge Graph")
-                if obj["nodes"] not in [None, []]:
-                    if obj["nodes"][0]["label"] not in [None, ""]:
-                        for i, node in enumerate(obj["nodes"]):
-                            if obj["nodes"][i]["label"] not in [None, ""]:
-                                dot.node(
-                                    name=str(obj["nodes"][i]["id"]),
-                                    label=obj["nodes"][i]["label"],
-                                    color=obj["nodes"][i]["color"],
-                                )
-                if obj["edges"] not in [None, []]:
-                    if obj["edges"][0]["label"] not in [None, ""]:
-                        for i, edge in enumerate(obj["edges"]):
-                            if (
-                                obj["edges"][i]["source"] not in [None, ""]
-                                and obj["edges"][i]["target"] not in [None, ""]
-                                and obj["edges"][i]["label"] not in [None, ""]
-                            ):
-                                dot.edge(
-                                    tail_name=str(obj["edges"][i]["source"]),
-                                    head_name=str(obj["edges"][i]["target"]),
-                                    label=obj["edges"][i]["label"],
-                                    color=obj["edges"][i]["color"],
-                                )
-                st.graphviz_chart(dot)
+def display_knowledge_graph(
+    nodes: List[KnowledgeGraphNode], edges: List[KnowledgeGraphEdge]
+):
+    streamlit_nodes = []
+    streamlit_edges = []
+
+    for node in nodes:
+        streamlit_node = Node(id=node.id, label=node.label, color=node.color)
+        streamlit_nodes.append(streamlit_node)
+
+    for edge in edges:
+        streamlit_edge = Edge(
+            source=edge.source,
+            target=edge.target,
+            label=edge.label,
+            color=edge.color,
+        )
+        streamlit_edges.append(streamlit_edge)
+
+    config = Config(
+        width=800,
+        height=800,
+        directed=True,
+        physics=False,
+        hierarchical=True,
+    )
+    return_value = agraph(nodes=streamlit_nodes, edges=streamlit_edges, config=config)
+
+    st.write(return_value)
+
+    # Export to PNG
+    if st.button("Export as PNG"):
+        img_data = return_value.screenshot(driver="selenium", wait_time=1)
+        buffered = io.BytesIO()
+        img = Image.open(io.BytesIO(img_data))
+        img.save(buffered, format="PNG")
+        st.download_button(
+            label="Download PNG",
+            data=buffered.getvalue(),
+            file_name="knowledge_graph.png",
+            mime="image/png",
+        )
 
 
 def send_message():
@@ -102,32 +144,21 @@ def send_message():
 
 
 def response(message):
-    extraction_stream = client.chat.completions.create_partial(
-        model="gpt-3.5-turbo",
-        response_model=KnowledgeGraph,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Help me understand the following by describing it as small knowledge graph: {message}. It is important to add variety of colors in the nodes.",
-            },
-        ],
-        temperature=0,
-        stream=True,
-    )
-    for extraction in extraction_stream:
-        obj = extraction.model_dump()
-        if f"{obj}" != st.session_state.aux:
-            add_chunk_to_ai_message(f"{obj}")
-            st.session_state.aux = f"{obj}"
+    knowledge_graph = KnowledgeGraph()
+    nodes, edges = knowledge_graph.generate_from_text(message, client)
+
+    display_knowledge_graph(nodes, edges)
 
 
 def main():
-    st.set_page_config(page_title="Knowledge Graph Generator")
+    st.set_page_config(
+        page_title="Knowledge Graph Generator",
+        page_icon=":chart_with_upwards_trend:",
+        layout="wide",
+    )
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    if "aux" not in st.session_state:
-        st.session_state.aux = ""
 
     st.title("Knowledge Graph Generator")
     st.markdown(
@@ -145,8 +176,6 @@ def main():
     if st.session_state.messages:
         if st.session_state.messages[-1]["role"] == "user":
             response(st.session_state.messages[-1]["content"])
-
-    display_knowledge_graph()
 
 
 if __name__ == "__main__":
