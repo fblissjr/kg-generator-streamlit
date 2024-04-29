@@ -8,4 +8,6 @@
 - graphviz output
 - backend uses braintrustdata.com for logging and evals
 - openai set for LLM; will update for local sources (or use openai api server)
-- to add: raw graphviz nodes/edges as json
+- to add:
+  * output graphviz nodes/edges as json
+  * actually utilize braintrust for evals/logging/tracing
